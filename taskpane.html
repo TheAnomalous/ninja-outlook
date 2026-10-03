@@ -864,6 +864,7 @@
         <div><strong>Host Runtime:</strong> <span id="dbgHost">Detecting…</span></div>
         <div><strong>Active Item:</strong> <span id="dbgItem">—</span></div>
         <div><strong>Supported Set:</strong> Mailbox 1.5+ (ItemChanged, Body.prependAsync)</div>
+        <div><strong>Nested App Auth (NAA 1.1):</strong> <span id="dbgNAA">Probing…</span></div>
         <div><strong>User Mailbox:</strong> <span id="dbgUser">—</span></div>
       </div>
     </div>
@@ -943,6 +944,23 @@
           const userProfile = Office.context.mailbox.userProfile;
           if (userProfile) dbgUser.textContent = `${userProfile.displayName || ''} <${userProfile.emailAddress || ''}>`;
         } catch(e){}
+
+        // Probe Nested App Authentication (NAA 1.1) support in this runtime
+        try {
+          const isNAA = (Office.context.requirements && typeof Office.context.requirements.isSetSupported === 'function')
+            ? Office.context.requirements.isSetSupported('NestedAppAuth', '1.1')
+            : false;
+          const dbgNAA = document.getElementById('dbgNAA');
+          if (dbgNAA) {
+            dbgNAA.textContent = isNAA ? 'TRUE (Supported in this host)' : 'FALSE (Not supported in this host)';
+            dbgNAA.style.color = isNAA ? '#34d399' : '#f87171';
+            dbgNAA.style.fontWeight = 'bold';
+          }
+          console.log('[Ninja] NestedAppAuth 1.1 supported:', isNAA);
+        } catch(e) {
+          const dbgNAA = document.getElementById('dbgNAA');
+          if (dbgNAA) dbgNAA.textContent = 'Error probing: ' + e.message;
+        }
 
         // Register ItemChanged handler so selecting a new email automatically syncs!
         if (Office.context.mailbox.addHandlerAsync) {
