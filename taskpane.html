@@ -399,6 +399,32 @@
       font-size: 11px;
     }
 
+    /* Target Email Binding Lock Banner */
+    .target-binding-banner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      font-weight: 500;
+      margin-bottom: 10px;
+      line-height: 1.4;
+      transition: all 0.2s ease;
+    }
+
+    .target-binding-banner.bound {
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: #34d399;
+    }
+
+    .target-binding-banner.mismatch {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+    }
+
     /* Draft Output Panel */
     .draft-box {
       border: 1px solid var(--border-subtle);
@@ -723,6 +749,9 @@
         </div>
       </div>
 
+      <!-- Target Binding Warning/Confirmation Banner -->
+      <div id="targetBindingBanner" class="target-binding-banner" style="display: none;"></div>
+
       <div class="draft-box">
         <textarea id="txtDraft" class="draft-textarea" placeholder="Your approved draft will appear here. You can refine or edit it before inserting it into Outlook…"></textarea>
       </div>
@@ -817,25 +846,16 @@
   <!-- View: Settings -->
   <main id="viewSettings" class="view-container" style="display: none;">
     <div class="card">
-      <span class="eyebrow">INTELLIGENCE ENGINE</span>
-      <h3 style="font-size: 14px; margin: 4px 0 12px;">Model & Research Configuration</h3>
-
-      <div class="form-group">
-        <label>OpenAI API Key (Stored Locally in Outlook)</label>
-        <input type="password" id="txtApiKey" placeholder="sk-proj-...">
-        <small style="font-size: 10px; color: var(--text-subtle); margin-top: 2px;">Stored privately in Outlook's secure local storage; never leaves your machine.</small>
+      <span class="eyebrow">ENTERPRISE DATA PRIVACY & COMPLIANCE</span>
+      <h3 style="font-size: 14px; margin: 4px 0 8px;">Corporate Mailbox Data Protection</h3>
+      <p style="font-size: 12px; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px;">
+        Direct browser-side API keys and client-to-OpenAI external transmissions are disabled. To protect confidential borrower loan information (NMLS, credit reports, loan numbers), all LLM inference and Dot queue matching are designed to route through the authenticated private backend.
+      </p>
+      <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); padding: 10px; font-size: 11px; line-height: 1.8;">
+        <div><strong>Guideline Engine:</strong> Verified Offline Local Rules (Active)</div>
+        <div><strong>Data Boundary:</strong> Zero client emails sent to public third-party endpoints</div>
+        <div><strong>Next Phase Auth:</strong> Microsoft Nested App Authentication (NAA / Entra ID)</div>
       </div>
-
-      <div class="form-group">
-        <label>Research & Drafting Model</label>
-        <select id="selModel">
-          <option value="gpt-4o">GPT-4o (Fast, highly accurate mortgage reasoning)</option>
-          <option value="gpt-4o-mini">GPT-4o Mini (Ultra-fast)</option>
-          <option value="o3-mini">o3-mini (Deep reasoning & guideline reconciliation)</option>
-        </select>
-      </div>
-
-      <button id="btnSaveSettings" class="btn btn-primary" style="margin-top: 4px;">Save Configuration</button>
     </div>
 
     <div class="card">
@@ -867,6 +887,10 @@
     <div class="modal-card">
       <div class="modal-title">Approve & Insert into Outlook?</div>
       <div id="modalDescription" class="modal-desc">This draft will be inserted directly above your signature in the active Outlook email.</div>
+      <div class="target-verification-box" style="background: rgba(0,0,0,0.35); border: 1px solid var(--border-subtle); border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; font-size: 11px; text-align: left;">
+        <div style="margin-bottom: 3px;"><strong>Target Subject:</strong> <span id="modalTargetSubject" style="color: #fff;"></span></div>
+        <div><strong>Recipients:</strong> <span id="modalTargetRecipient" style="color: var(--accent-gold);"></span></div>
+      </div>
       <div id="modalPreview" class="modal-preview"></div>
       <div class="modal-actions">
         <button id="btnModalCancel" class="btn btn-secondary">Keep Editing</button>
@@ -967,11 +991,14 @@
               from: fromStr || (isCompose ? 'New Compose Draft' : 'Unknown Sender'),
               body: body,
               mode: mode,
-              itemType: item.itemType
+              itemType: item.itemType,
+              itemId: item.itemId || '',
+              conversationId: item.conversationId || ''
             };
 
             state.activeMail = mail;
             updateMailUI(mail);
+            updateTargetBindingUI();
           });
         });
       });
@@ -1096,86 +1123,39 @@
       setBusy(true, "Researching agency guidelines…");
 
       try {
-        let draft = "";
-        let citations = [];
-
-        // Check if user has an OpenAI API key configured
-        if (state.settings.apiKey && state.settings.apiKey.startsWith('sk-')) {
-          const result = await callOpenAI(email, program, audience, style, instructions);
-          draft = result.draft;
-          citations = result.citations || [];
-        } else {
-          // High-fidelity rule-grounded mortgage generator
-          draft = generateSmartMortgageReply(email, program, audience, style, instructions);
-          const activeRule = GUIDELINE_RULES[program] || GUIDELINE_RULES['FHA'];
-          citations = [activeRule];
-        }
+        // High-fidelity rule-grounded mortgage generator (Runs 100% in-memory locally)
+        const draft = generateSmartMortgageReply(email, program, audience, style, instructions);
+        const activeRule = GUIDELINE_RULES[program] || GUIDELINE_RULES['FHA'];
+        const citations = [activeRule];
 
         // Update UI with draft
         document.getElementById('txtDraft').value = draft;
         state.draftText = draft;
-        document.getElementById('btnInsert').disabled = false;
+
+        // BIND draft approval to the exact active email snapshot
+        state.draftTargetBinding = {
+          subject: email.subject || '',
+          from: email.from || '',
+          itemId: email.itemId || '',
+          conversationId: email.conversationId || '',
+          mode: email.mode || 'read',
+          draftText: draft,
+          boundAt: Date.now()
+        };
+
+        updateTargetBindingUI();
 
         // Render citations
         renderCitations(citations);
 
         setReady("Draft ready for review.");
-        showToast("Mortgage reply prepared with verified citations.", "success");
+        showToast("Mortgage reply prepared and bound to active email.", "success");
       } catch (err) {
         console.error(err);
-        setReady("Draft generated with rule fallbacks.");
-        showToast("OpenAI error: " + err.message + ". Used offline guidance rule.", "error");
-        const fallback = generateSmartMortgageReply(email, program, audience, style, instructions);
-        document.getElementById('txtDraft').value = fallback;
-        document.getElementById('btnInsert').disabled = false;
+        setReady("Draft generation failed.");
+        showToast("Error preparing draft: " + err.message, "error");
       }
     });
-
-    async function callOpenAI(email, program, audience, style, instructions) {
-      const systemPrompt = `You are Ninja, the dedicated mortgage assistant for Adam Fuller at The Fuller Team (Mortgage One, afuller@mortgageone.com).
-Your job is to draft concise, highly professional, source-grounded email responses.
-Voice: Warm, direct, clear, professional.
-Audience: ${audience}.
-Style: ${style}.
-Never use canned AI phrases ("I hope this email finds you well", "delve", "testament").
-Answer the core mortgage question directly in the first sentence.
-Cite specific agency guidelines (FHA 4000.1, Fannie Mae Selling Guide, VA Pamphlet 26-7, MSHDA).
-Clearly state what documentation is needed to clear the condition.`;
-
-      const userContent = `EMAIL TO REPLY TO:
-Subject: ${email.subject}
-From: ${email.from}
-Body:
-${email.body}
-
-MORTGAGE PROGRAM: ${program}
-ADDITIONAL INSTRUCTIONS: ${instructions || 'None'}`;
-
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${state.settings.apiKey}`
-        },
-        body: JSON.stringify({
-          model: state.settings.model || 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userContent }
-          ],
-          temperature: 0.2
-        })
-      });
-
-      if (!res.ok) {
-        const errorJson = await res.json().catch(() => ({}));
-        throw new Error(errorJson.error?.message || `HTTP ${res.status}`);
-      }
-
-      const data = await res.json();
-      const content = data.choices[0]?.message?.content || '';
-      return { draft: content, citations: [GUIDELINE_RULES[program] || GUIDELINE_RULES['FHA']] };
-    }
 
     function generateSmartMortgageReply(email, program, audience, style, instructions) {
       const senderName = email.from.split('<')[0].trim().split(' ')[0] || 'there';
@@ -1244,18 +1224,88 @@ ADDITIONAL INSTRUCTIONS: ${instructions || 'None'}`;
     }
 
     // ----------------------------------------------------
-    // Insert into Outlook Action
+    // Insert into Outlook Action (Bound strictly to target email)
     // ----------------------------------------------------
     const btnInsert = document.getElementById('btnInsert');
     const confirmModal = document.getElementById('confirmModal');
     const modalPreview = document.getElementById('modalPreview');
     const modalDesc = document.getElementById('modalDescription');
 
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function verifyTargetBinding() {
+      if (!state.draftTargetBinding) return false;
+      const current = state.activeMail;
+      if (!current) return false;
+
+      // Subject must match
+      if (current.subject !== state.draftTargetBinding.subject) return false;
+
+      // If itemId was bound and is present on current, it must match
+      if (state.draftTargetBinding.itemId && current.itemId && state.draftTargetBinding.itemId !== current.itemId) {
+        return false;
+      }
+
+      return true;
+    }
+
+    function updateTargetBindingUI() {
+      const banner = document.getElementById('targetBindingBanner');
+      const btnInsert = document.getElementById('btnInsert');
+      const draft = document.getElementById('txtDraft') ? document.getElementById('txtDraft').value.trim() : '';
+
+      if (!state.draftTargetBinding || !draft) {
+        banner.style.display = 'none';
+        btnInsert.disabled = !draft;
+        return;
+      }
+
+      const bound = state.draftTargetBinding;
+      const isMatch = verifyTargetBinding();
+
+      if (isMatch) {
+        banner.style.display = 'flex';
+        banner.className = 'target-binding-banner bound';
+        banner.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Locked to: <strong>${escapeHtml(bound.subject.slice(0, 38))}${bound.subject.length > 38 ? '…' : ''}</strong></span>
+        `;
+        btnInsert.disabled = false;
+        btnInsert.title = "Insert approved draft into active verified email";
+      } else {
+        const currentSubj = state.activeMail?.subject || 'Different email';
+        banner.style.display = 'flex';
+        banner.className = 'target-binding-banner mismatch';
+        banner.innerHTML = `
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+          <span><strong>Mismatch Locked:</strong> Draft is bound to "${escapeHtml(bound.subject.slice(0, 22))}…". Currently viewing "${escapeHtml(currentSubj.slice(0, 22))}…". Insertion disabled.</span>
+        `;
+        btnInsert.disabled = true;
+        btnInsert.title = "Blocked: Target email changed. Switch back to original email or regenerate.";
+      }
+    }
+
     btnInsert.addEventListener('click', () => {
       const draft = document.getElementById('txtDraft').value.trim();
       if (!draft) return;
 
+      if (!verifyTargetBinding()) {
+        showToast("Safety Block: Current email does not match approved draft target!", "error");
+        updateTargetBindingUI();
+        return;
+      }
+
       modalPreview.textContent = draft;
+      document.getElementById('modalTargetSubject').textContent = state.draftTargetBinding.subject;
+      document.getElementById('modalTargetRecipient').textContent = state.draftTargetBinding.from || (state.activeMail?.mode === 'compose' ? 'Active Compose Recipients' : 'Sender');
+
       const isCompose = state.activeMail?.mode === 'compose';
       modalDesc.textContent = isCompose
         ? "This draft will be prepended directly above your signature in the active Outlook compose window."
@@ -1276,6 +1326,13 @@ ADDITIONAL INSTRUCTIONS: ${instructions || 'None'}`;
     function executeInsertion() {
       const draft = document.getElementById('txtDraft').value.trim();
       const replyAll = document.getElementById('chkReplyAll').checked;
+
+      // Final defensive check right before execution: ensure Outlook selection hasn't shifted
+      if (!verifyTargetBinding()) {
+        showToast("Safety Block: Target email changed before insertion! Action cancelled.", "error");
+        updateTargetBindingUI();
+        return;
+      }
 
       if (!state.officeReady || !Office.context.mailbox.item) {
         // Fallback in web preview
@@ -1411,8 +1468,10 @@ ADDITIONAL INSTRUCTIONS: ${instructions || 'None'}`;
     document.getElementById('btnClearDraft').addEventListener('click', () => {
       document.getElementById('txtDraft').value = '';
       state.draftText = '';
+      state.draftTargetBinding = null;
       document.getElementById('btnInsert').disabled = true;
       document.getElementById('citationSection').style.display = 'none';
+      updateTargetBindingUI();
       setBusy(false, "Draft cleared.");
     });
 
