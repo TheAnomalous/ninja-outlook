@@ -964,6 +964,13 @@
     // Email Context Loader
     // ----------------------------------------------------
     function loadActiveEmail() {
+      // Auto-dismiss confirmation modal if open when selection changes in Outlook
+      const confirmModalEl = document.getElementById('confirmModal');
+      if (confirmModalEl && confirmModalEl.classList.contains('open')) {
+        confirmModalEl.classList.remove('open');
+        showToast("Confirmation dismissed: active Outlook email changed.", "warning");
+      }
+
       if (!state.officeReady || !Office.context.mailbox.item) {
         updateMailUI(null);
         return;
@@ -1324,20 +1331,33 @@
     });
 
     function executeInsertion() {
+      if (state.isInserting) return;
+      state.isInserting = true;
+
+      const btnModalConfirm = document.getElementById('btnModalConfirm');
+      if (btnModalConfirm) btnModalConfirm.disabled = true;
+      btnInsert.disabled = true;
+
+      const finish = (msg, type) => {
+        state.isInserting = false;
+        if (btnModalConfirm) btnModalConfirm.disabled = false;
+        updateTargetBindingUI();
+        if (msg) showToast(msg, type);
+      };
+
       const draft = document.getElementById('txtDraft').value.trim();
       const replyAll = document.getElementById('chkReplyAll').checked;
 
       // Final defensive check right before execution: ensure Outlook selection hasn't shifted
       if (!verifyTargetBinding()) {
-        showToast("Safety Block: Target email changed before insertion! Action cancelled.", "error");
-        updateTargetBindingUI();
+        finish("Safety Block: Target email changed before insertion! Action cancelled.", "error");
         return;
       }
 
       if (!state.officeReady || !Office.context.mailbox.item) {
         // Fallback in web preview
         navigator.clipboard.writeText(draft);
-        showToast("Preview mode: draft copied to clipboard!", "success");
+        finish("Preview mode: draft copied to clipboard!", "success");
         return;
       }
 
@@ -1349,9 +1369,9 @@
         // Prepend directly into the compose body, preserving signature and existing thread
         item.body.prependAsync(htmlBody, { coercionType: Office.CoercionType.Html }, (result) => {
           if (result.status === Office.AsyncResultStatus.Succeeded) {
-            showToast("Draft inserted at top of your email!", "success");
+            finish("Draft inserted at top of your email!", "success");
           } else {
-            showToast("Insertion error: " + (result.error?.message || "Outlook rejected write"), "error");
+            finish("Insertion error: " + (result.error?.message || "Outlook rejected write"), "error");
           }
         });
       } else {
@@ -1362,16 +1382,16 @@
         if (typeof item[methodName] === 'function') {
           item[methodName](htmlBody, (result) => {
             if (result.status === Office.AsyncResultStatus.Succeeded) {
-              showToast("Reply window opened with draft!", "success");
+              finish("Reply window opened with draft!", "success");
             } else {
-              showToast("Could not open reply: " + (result.error?.message || "Unknown"), "error");
+              finish("Could not open reply: " + (result.error?.message || "Unknown"), "error");
             }
           });
         } else if (typeof item[legacyMethod] === 'function') {
           item[legacyMethod](htmlBody);
-          showToast("Reply window opened!", "success");
+          finish("Reply window opened!", "success");
         } else {
-          showToast("Open a reply in Outlook, then click Insert.", "error");
+          finish("Open a reply in Outlook, then click Insert.", "error");
         }
       }
     }
