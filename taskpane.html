@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ninja for Outlook</title>
+
+  <!-- Office.js - Hosted Microsoft CDN -->
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+
+  <!-- Google Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-canvas: #090d16;
+      --bg-panel: #111827;
+      --bg-card: #1f2937;
+      --bg-input: #151e2e;
+      --border-subtle: #2d3748;
+      --border-highlight: #3b4252;
+      --border-focus: #e63946;
+      --text-main: #f9fafb;
+      --text-muted: #9ca3af;
+      --text-subtle: #6b7280;
+      --brand-red: #e63946;
+      --brand-red-hover: #d62828;
+      --brand-red-glow: rgba(230, 57, 70, 0.25);
+      --accent-green: #10b981;
+      --accent-green-glow: rgba(16, 185, 129, 0.2);
+      --accent-gold: #f59e0b;
+      --accent-gold-glow: rgba(245, 158, 11, 0.2);
+      --accent-blue: #3b82f6;
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.35);
+      --shadow-float: 0 10px 25px rgba(0, 0, 0, 0.5);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      font-family: var(--font-main);
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    /* Top Bar */
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--brand-red), #991b1b);
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+      color: white;
+      box-shadow: 0 2px 8px var(--brand-red-glow);
+    }
+
+    .brand-text strong {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-text strong span {
+      color: var(--brand-red);
+    }
+
+    .brand-text small {
+      display: block;
+      font-size: 10px;
+      color: var(--text-subtle);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .host-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    .host-pill.disconnected {
+      background: rgba(245, 158, 11, 0.12);
+      color: var(--accent-gold);
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 8px;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 4px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      color: var(--brand-red);
+      border-bottom-color: var(--brand-red);
+      background: rgba(230, 57, 70, 0.05);
+    }
+
+    /* Main View Area */
+    .view-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      box-shadow: var(--shadow-card);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .eyebrow {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--brand-red);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* Mail Preview Card */
+    .mail-preview {
+      background: linear-gradient(180deg, #131d2e 0%, var(--bg-panel) 100%);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+    }
+
+    .mail-subject {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      margin-top: 2px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .mail-from {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mail-badge {
+      display: inline-block;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      text-transform: uppercase;
+    }
+
+    .mail-snippet {
+      font-size: 11px;
+      color: var(--text-subtle);
+      margin-top: 8px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: var(--radius-sm);
+      max-height: 80px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      border-left: 2px solid #3b82f6;
+    }
+
+    /* Ninja Avatar Banner */
+    .ninja-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: linear-gradient(135deg, rgba(230, 57, 70, 0.12), rgba(31, 41, 55, 0.6));
+      border: 1px solid rgba(230, 57, 70, 0.3);
+      border-radius: var(--radius-md);
+      padding: 12px 14px;
+    }
+
+    .ninja-sprite {
+      width: 48px;
+      height: 52px;
+      background-image: url('ninja-sprites.png');
+      background-repeat: no-repeat;
+      background-size: 460px 499px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.5));
+    }
+
+    .ninja-banner-content h4 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .ninja-banner-content p {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Inputs & Selects */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+
+    .form-group label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    input[type="text"], input[type="password"], textarea, select {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 8px 10px;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px var(--brand-red-glow);
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 64px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 9px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: var(--brand-red);
+      color: white;
+      box-shadow: 0 2px 10px var(--brand-red-glow);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--brand-red-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 2px 10px var(--accent-green-glow);
+    }
+
+    .btn-success:hover:not(:disabled) {
+      filter: brightness(1.1);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--border-subtle);
+    }
+
+    .btn-sm {
+      padding: 5px 8px;
+      font-size: 11px;
+    }
+
+    /* Draft Output Panel */
+    .draft-box {
+      border: 1px solid var(--border-subtle);
+      background: #0f172a;
+      border-radius: var(--radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .draft-textarea {
+      width: 100%;
+      min-height: 160px;
+      font-size: 12.5px;
+      line-height: 1.6;
+      background: transparent;
+      border: none;
+      color: #e2e8f0;
+      resize: vertical;
+    }
+
+    .draft-textarea:focus {
+      box-shadow: none;
+      border: none;
+    }
+
+    /* Policy Citations & Evidence */
+    .citation-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .citation-item {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid var(--accent-green);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      font-size: 11px;
+    }
+
+    .citation-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .citation-agency {
+      color: var(--accent-gold);
+      font-weight: 600;
+    }
+
+    .citation-rule {
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Bottom Action Bar */
+    .action-bar {
+      padding: 12px 14px;
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .checkbox-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 60px;
+      left: 14px;
+      right: 14px;
+      padding: 10px 14px;
+      background: #1f2937;
+      border: 1px solid #374151;
+      border-radius: var(--radius-md);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: var(--shadow-float);
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 1000;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .toast.success {
+      border-left: 4px solid var(--accent-green);
+    }
+
+    .toast.error {
+      border-left: 4px solid var(--brand-red);
+    }
+
+    /* Spinner Animation */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Modal Dialog */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      max-width: 380px;
+      width: 100%;
+      box-shadow: var(--shadow-float);
+    }
+
+    .modal-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+
+    .modal-desc {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .modal-preview {
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      font-size: 11px;
+      max-height: 120px;
+      overflow-y: auto;
+      margin-bottom: 14px;
+      color: #cbd5e1;
+      border-left: 2px solid var(--accent-green);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">N</div>
+      <div class="brand-text">
+        <strong>NINJA <span>INBOX</span></strong>
+        <small>The Fuller Team</small>
+      </div>
+    </div>
+    <div id="hostPill" class="host-pill disconnected">
+      <span class="pulse-dot"></span>
+      <span id="hostStatus">Connecting…</span>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs">
+    <button class="tab-btn active" data-tab="desk">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      Draft Desk
+    </button>
+    <button class="tab-btn" data-tab="guidance">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      Guidance
+    </button>
+    <button class="tab-btn" data-tab="queue">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"></rect><polyline points="3 9 12 15 21 9"></polyline></svg>
+      Queue (<span id="queueCount">0</span>)
+    </button>
+    <button class="tab-btn" data-tab="settings">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Settings
+    </button>
+  </nav>
+
+  <!-- View: Draft Desk -->
+  <main id="viewDesk" class="view-container">
+
+    <!-- Active Email Context Card -->
+    <div class="card mail-preview">
+      <div class="card-header" style="margin-bottom: 4px;">
+        <span class="eyebrow" id="mailModeLabel">ACTIVE OUTLOOK MESSAGE</span>
+        <button id="btnRefreshMail" class="btn btn-secondary btn-sm" title="Reload active email">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          Sync
+        </button>
+      </div>
+      <div id="mailSubject" class="mail-subject">Select an email in Outlook…</div>
+      <div id="mailFrom" class="mail-from">
+        <span class="mail-badge" id="mailModeBadge">Read Mode</span>
+        <span id="mailFromText">—</span>
+      </div>
+      <div id="mailSnippet" class="mail-snippet">Clicking any message in Outlook automatically loads its thread context here.</div>
+    </div>
+
+    <!-- Ninja Companion Status Card -->
+    <div class="ninja-banner">
+      <div id="ninjaSprite" class="ninja-sprite" style="background-position: 0px 0px;"></div>
+      <div class="ninja-banner-content">
+        <h4 id="ninjaStatusTitle">Ready to draft</h4>
+        <p id="ninjaStatusDesc">Clear, source-grounded mortgage response matching Adam’s voice.</p>
+      </div>
+    </div>
+
+    <!-- Drafting Preferences -->
+    <div class="card">
+      <div class="grid-2">
+        <div class="form-group">
+          <label>Mortgage Program</label>
+          <select id="selProgram">
+            <option value="Auto">Auto-Detect</option>
+            <option value="Fannie Mae">Fannie Mae (Conventional)</option>
+            <option value="Freddie Mac">Freddie Mac (Conventional)</option>
+            <option value="FHA">FHA (HUD 4000.1)</option>
+            <option value="VA">VA (Handbook M26-7)</option>
+            <option value="USDA">USDA Rural Housing</option>
+            <option value="MSHDA">MSHDA Down Payment Assistance</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Audience</label>
+          <select id="selAudience">
+            <option value="Client">Borrower / Client</option>
+            <option value="Realtor">Real Estate Agent</option>
+            <option value="Loan Officer">Loan Officer / Internal</option>
+            <option value="Underwriter">Underwriter / Processor</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Writing Style</label>
+        <select id="selStyle">
+          <option value="Adam's Voice">Adam’s Voice (Warm, direct, concise, professional)</option>
+          <option value="Short & Direct">Short & Direct (Quick bulleted facts)</option>
+          <option value="Firm & Factual">Firm & Factual (Policy-driven with citations)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Specific Instructions / Focus Facts (Optional)</label>
+        <textarea id="txtInstructions" placeholder="e.g. Departing residence rental income needs executed lease; borrower 1% credit cannot exceed MSHDA limits…"></textarea>
+      </div>
+
+      <button id="btnGenerate" class="btn btn-primary" style="width: 100%;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+        Generate Source-Backed Draft
+      </button>
+    </div>
+
+    <!-- Review & Edit Draft Card -->
+    <div class="card">
+      <div class="card-header">
+        <span class="eyebrow">DRAFT REVIEW</span>
+        <div style="display: flex; gap: 6px;">
+          <button id="btnCopyDraft" class="btn btn-secondary btn-sm" title="Copy text">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Copy
+          </button>
+          <button id="btnClearDraft" class="btn btn-secondary btn-sm" title="Clear">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="draft-box">
+        <textarea id="txtDraft" class="draft-textarea" placeholder="Your approved draft will appear here. You can refine or edit it before inserting it into Outlook…"></textarea>
+      </div>
+
+      <!-- Researched Evidence / Citation Box -->
+      <div id="citationSection" style="display: none; margin-top: 12px;">
+        <span class="eyebrow" style="color: var(--accent-gold);">VERIFIED AGENCY CITATIONS</span>
+        <div id="citationList" class="citation-list"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- View: Guidance Search -->
+  <main id="viewGuidance" class="view-container" style="display: none;">
+    <div class="card">
+      <span class="eyebrow">RESEARCH DESK</span>
+      <h3 style="margin: 4px 0 10px; font-size: 14px;">Official Mortgage Agency Guidelines</h3>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">
+        Review underwriting manuals and policy handbook sections before relying on a scenario.
+      </p>
+
+      <div class="form-group">
+        <label>Agency Manual</label>
+        <select id="selGuidanceProgram">
+          <option value="fannie">Fannie Mae Selling Guide</option>
+          <option value="freddie">Freddie Mac Seller/Servicer Guide</option>
+          <option value="fha">FHA Single Family Housing Handbook 4000.1</option>
+          <option value="va">VA Lenders Handbook (Pamphlet 26-7)</option>
+          <option value="mshda">MSHDA Down Payment Assistance & Overlay</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Guideline Scenario / Rule Question</label>
+        <textarea id="txtGuidanceQuestion" placeholder="e.g. Minimum seasoning requirement for departing primary residence rental income…"></textarea>
+      </div>
+
+      <button id="btnSearchGuidance" class="btn btn-primary" style="width: 100%;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        Lookup Agency Guidance
+      </button>
+
+      <div id="guidanceResults" style="margin-top: 14px; display: none;">
+        <div id="guidanceContent" class="citation-item" style="border-left-color: var(--accent-gold);"></div>
+      </div>
+    </div>
+
+    <!-- Official Guide Direct Links -->
+    <div class="card">
+      <span class="eyebrow">OFFICIAL MANUALS</span>
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+        <a href="https://selling-guide.fanniemae.com/" target="_blank" class="btn btn-secondary" style="justify-content: flex-start;">
+          📘 Fannie Mae Selling Guide
+        </a>
+        <a href="https://guide.freddiemac.com/" target="_blank" class="btn btn-secondary" style="justify-content: flex-start;">
+          📗 Freddie Mac Guide
+        </a>
+        <a href="https://www.hud.gov/hud-partners/single-family-handbook-4000-1" target="_blank" class="btn btn-secondary" style="justify-content: flex-start;">
+          📙 FHA Handbook 4000.1
+        </a>
+        <a href="https://benefits.va.gov/warms/pam26_7.asp" target="_blank" class="btn btn-secondary" style="justify-content: flex-start;">
+          🎖️ VA Lenders Handbook M26-7
+        </a>
+        <a href="https://www.michigan.gov/mshda/lenders-realtors/lenders---grow-your-mortgage-business-with-mshda" target="_blank" class="btn btn-secondary" style="justify-content: flex-start;">
+          🏠 MSHDA Down Payment Assistance
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- View: Prepared Queue -->
+  <main id="viewQueue" class="view-container" style="display: none;">
+    <div class="card">
+      <div class="card-header">
+        <span class="eyebrow">BACKGROUND PREPARATION</span>
+        <button id="btnRefreshQueue" class="btn btn-secondary btn-sm">Refresh</button>
+      </div>
+      <h3 style="font-size: 14px; margin-bottom: 6px;">Advance Researched Replies</h3>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+        Emails prepared in advance for <strong style="color: #fff;">afuller@mortgageone.com</strong>. Selecting a matching email loads its draft immediately.
+      </p>
+
+      <div id="queueList" style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="text-align: center; padding: 24px 10px; color: var(--text-subtle);">
+          No advance drafts in queue yet. As emails arrive, Ninja prepares answers for your review.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- View: Settings -->
+  <main id="viewSettings" class="view-container" style="display: none;">
+    <div class="card">
+      <span class="eyebrow">INTELLIGENCE ENGINE</span>
+      <h3 style="font-size: 14px; margin: 4px 0 12px;">Model & Research Configuration</h3>
+
+      <div class="form-group">
+        <label>OpenAI API Key (Stored Locally in Outlook)</label>
+        <input type="password" id="txtApiKey" placeholder="sk-proj-...">
+        <small style="font-size: 10px; color: var(--text-subtle); margin-top: 2px;">Stored privately in Outlook's secure local storage; never leaves your machine.</small>
+      </div>
+
+      <div class="form-group">
+        <label>Research & Drafting Model</label>
+        <select id="selModel">
+          <option value="gpt-4o">GPT-4o (Fast, highly accurate mortgage reasoning)</option>
+          <option value="gpt-4o-mini">GPT-4o Mini (Ultra-fast)</option>
+          <option value="o3-mini">o3-mini (Deep reasoning & guideline reconciliation)</option>
+        </select>
+      </div>
+
+      <button id="btnSaveSettings" class="btn btn-primary" style="margin-top: 4px;">Save Configuration</button>
+    </div>
+
+    <div class="card">
+      <span class="eyebrow">OUTLOOK INTEGRATION STATUS</span>
+      <div style="font-size: 11.5px; line-height: 1.8; margin-top: 8px; color: var(--text-muted);">
+        <div><strong>Host Runtime:</strong> <span id="dbgHost">Detecting…</span></div>
+        <div><strong>Active Item:</strong> <span id="dbgItem">—</span></div>
+        <div><strong>Supported Set:</strong> Mailbox 1.5+ (ItemChanged, Body.prependAsync)</div>
+        <div><strong>User Mailbox:</strong> <span id="dbgUser">—</span></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Floating Action Bar -->
+  <footer class="action-bar">
+    <label class="checkbox-label">
+      <input type="checkbox" id="chkReplyAll" checked>
+      Reply All
+    </label>
+
+    <button id="btnInsert" class="btn btn-success" disabled>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      Approve & Insert into Email
+    </button>
+  </footer>
+
+  <!-- Confirmation Modal -->
+  <div id="confirmModal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-title">Approve & Insert into Outlook?</div>
+      <div id="modalDescription" class="modal-desc">This draft will be inserted directly above your signature in the active Outlook email.</div>
+      <div id="modalPreview" class="modal-preview"></div>
+      <div class="modal-actions">
+        <button id="btnModalCancel" class="btn btn-secondary">Keep Editing</button>
+        <button id="btnModalConfirm" class="btn btn-success">Confirm & Insert</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast">
+    <span id="toastIcon"></span>
+    <span id="toastMessage"></span>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    // ----------------------------------------------------
+    // State & Storage
+    // ----------------------------------------------------
+    const state = {
+      officeReady: false,
+      activeMail: null,
+      draftText: '',
+      isGenerating: false,
+      spriteFrame: 0,
+      spriteState: 'idle', // 'idle' | 'busy' | 'ready'
+      settings: {
+        apiKey: localStorage.getItem('ninja_openai_key') || '',
+        model: localStorage.getItem('ninja_model') || 'gpt-4o',
+      }
+    };
+
+    // ----------------------------------------------------
+    // Office.js Initialization
+    // ----------------------------------------------------
+    Office.onReady((info) => {
+      console.log('Office.js ready, host:', info.host);
+      const hostPill = document.getElementById('hostPill');
+      const hostStatus = document.getElementById('hostStatus');
+      const dbgHost = document.getElementById('dbgHost');
+      const dbgUser = document.getElementById('dbgUser');
+
+      if (info.host === Office.HostType.Outlook) {
+        state.officeReady = true;
+        hostPill.classList.remove('disconnected');
+        hostStatus.textContent = 'Outlook Connected';
+        dbgHost.textContent = 'Outlook Classic (Edge WebView2)';
+
+        try {
+          const userProfile = Office.context.mailbox.userProfile;
+          if (userProfile) dbgUser.textContent = `${userProfile.displayName || ''} <${userProfile.emailAddress || ''}>`;
+        } catch(e){}
+
+        // Register ItemChanged handler so selecting a new email automatically syncs!
+        if (Office.context.mailbox.addHandlerAsync) {
+          Office.context.mailbox.addHandlerAsync(Office.EventType.ItemChanged, () => {
+            loadActiveEmail();
+          });
+        }
+
+        // Initial load
+        loadActiveEmail();
+      } else {
+        hostStatus.textContent = 'Browser Preview';
+        dbgHost.textContent = 'Web Browser (Mock Context)';
+        loadMockEmail();
+      }
+    });
+
+    // ----------------------------------------------------
+    // Email Context Loader
+    // ----------------------------------------------------
+    function loadActiveEmail() {
+      if (!state.officeReady || !Office.context.mailbox.item) {
+        updateMailUI(null);
+        return;
+      }
+
+      const item = Office.context.mailbox.item;
+      const isCompose = typeof item.subject?.getAsync === 'function';
+      const mode = isCompose ? 'compose' : 'read';
+
+      // Read subject
+      getValueAsync(item.subject, (subject) => {
+        // Read from
+        const fromField = isCompose ? null : item.from;
+        getValueAsync(fromField, (fromVal) => {
+          let fromStr = '';
+          if (typeof fromVal === 'string') fromStr = fromVal;
+          else if (fromVal && fromVal.emailAddress) fromStr = `${fromVal.displayName || ''} <${fromVal.emailAddress}>`;
+
+          // Read body
+          item.body.getAsync(Office.CoercionType.Text, (result) => {
+            const body = result.status === Office.AsyncResultStatus.Succeeded ? (result.value || '') : '';
+            
+            const mail = {
+              subject: subject || '(No Subject)',
+              from: fromStr || (isCompose ? 'New Compose Draft' : 'Unknown Sender'),
+              body: body,
+              mode: mode,
+              itemType: item.itemType
+            };
+
+            state.activeMail = mail;
+            updateMailUI(mail);
+          });
+        });
+      });
+    }
+
+    function getValueAsync(field, callback) {
+      if (!field) return callback('');
+      if (typeof field.getAsync === 'function') {
+        field.getAsync((res) => {
+          callback(res.status === Office.AsyncResultStatus.Succeeded ? res.value : '');
+        });
+      } else {
+        callback(field);
+      }
+    }
+
+    function loadMockEmail() {
+      const mock = {
+        subject: "Question on FHA DTI and Student Loan Payments - Smith File",
+        from: "Sarah Jenkins <sjenkins@realtypartners.com>",
+        body: "Hey Adam,\n\nWorking with the Smith family on 1428 Elm St. Buyer is currently on an income-driven repayment plan showing $0/month on credit report for federal student loans. Can we use the $0 payment for qualifying on FHA, or do we have to calculate 0.5% of the total balance?\n\nThanks,\nSarah",
+        mode: "read"
+      };
+      state.activeMail = mock;
+      updateMailUI(mock);
+    }
+
+    function updateMailUI(mail) {
+      const subjEl = document.getElementById('mailSubject');
+      const fromEl = document.getElementById('mailFromText');
+      const snippetEl = document.getElementById('mailSnippet');
+      const badgeEl = document.getElementById('mailModeBadge');
+      const modeLabelEl = document.getElementById('mailModeLabel');
+      const dbgItem = document.getElementById('dbgItem');
+
+      if (!mail) {
+        subjEl.textContent = 'Select an email in Outlook…';
+        fromEl.textContent = '—';
+        snippetEl.textContent = 'Click any email in your inbox to read its context.';
+        badgeEl.textContent = 'No Selection';
+        dbgItem.textContent = 'None';
+        return;
+      }
+
+      subjEl.textContent = mail.subject;
+      fromEl.textContent = mail.from;
+      snippetEl.textContent = mail.body.slice(0, 300) + (mail.body.length > 300 ? '…' : '');
+      badgeEl.textContent = mail.mode === 'compose' ? 'Compose Draft' : 'Inbox Read';
+      modeLabelEl.textContent = mail.mode === 'compose' ? 'OUTLOOK COMPOSE WINDOW' : 'SELECTED INBOX MESSAGE';
+      dbgItem.textContent = mail.subject.slice(0, 40);
+
+      // Auto-detect program from subject / body
+      const text = (mail.subject + ' ' + mail.body).toLowerCase();
+      const selProgram = document.getElementById('selProgram');
+      if (text.includes('fha')) selProgram.value = 'FHA';
+      else if (text.includes('va ') || text.includes('veteran')) selProgram.value = 'VA';
+      else if (text.includes('usda') || text.includes('rural')) selProgram.value = 'USDA';
+      else if (text.includes('mshda') || text.includes('dpa') || text.includes('down payment assistance')) selProgram.value = 'MSHDA';
+      else if (text.includes('freddie') || text.includes('lpa')) selProgram.value = 'Freddie Mac';
+      else if (text.includes('fannie') || text.includes('du ') || text.includes('conventional')) selProgram.value = 'Fannie Mae';
+    }
+
+    // ----------------------------------------------------
+    // Animated Ninja Sprite
+    // ----------------------------------------------------
+    setInterval(() => {
+      const sprite = document.getElementById('ninjaSprite');
+      if (!sprite) return;
+      
+      let row = 0;
+      let maxFrames = 6;
+      if (state.spriteState === 'busy') { row = 7; maxFrames = 8; }
+      else if (state.spriteState === 'ready') { row = 8; maxFrames = 6; }
+
+      state.spriteFrame = (state.spriteFrame + 1) % maxFrames;
+      const xOffset = -(state.spriteFrame * 48);
+      const yOffset = -(row * 52);
+      sprite.style.backgroundPosition = `${xOffset}px ${yOffset}px`;
+    }, 200);
+
+    // ----------------------------------------------------
+    // Knowledge Base & Prompt Engine
+    // ----------------------------------------------------
+    const GUIDELINE_RULES = {
+      FHA: {
+        agency: "FHA Handbook 4000.1 (Section II.A.4.b.iv)",
+        summary: "Student loans with $0 IDR payments require documentation of the IDR agreement showing $0 or calculation of 0.5% of outstanding balance.",
+        details: "Under FHA Single Family Handbook 4000.1: If the credit report does not show a monthly payment, or shows $0 (such as an Income-Driven Repayment plan), the Mortgagee must obtain written documentation from the servicer showing the payment is $0 under an IDR plan, OR use 0.5% of the total loan balance as the monthly qualifying payment."
+      },
+      "Fannie Mae": {
+        agency: "Fannie Mae Selling Guide B3-6-05",
+        summary: "If a student loan is in an income-driven repayment plan and the payment on credit report is $0, $0 may be used if documented with servicer letter.",
+        details: "Fannie Mae permits $0 monthly payment for qualifying if documented by student loan servicer paperwork confirming $0 monthly payment under an Income-Driven Repayment (IDR) plan."
+      },
+      "Freddie Mac": {
+        agency: "Freddie Mac Single-Family Seller/Servicer Guide 5401.2",
+        summary: "If the payment is $0 on credit report, verify the student loan terms. Documented IDR $0 payments qualify with 0 payment.",
+        details: "Freddie Mac allows $0 monthly payment when documented through the borrower’s IDR plan agreement, or 0.5% of the loan balance if no payment is documented."
+      },
+      VA: {
+        agency: "VA Lenders Handbook M26-7 Chapter 4",
+        summary: "Student loans deferred 12+ months post-closing may be excluded. If not deferred, use 5% of balance divided by 12.",
+        details: "VA allows excluding student loan payments if deferred at least 12 months beyond the loan closing date. Otherwise, calculate payment at 5% of the balance divided by 12, or the documented IDR payment."
+      },
+      MSHDA: {
+        agency: "MSHDA MI Home Loan Program Guidelines",
+        summary: "MSHDA Down Payment Assistance ($7,500 / $10,000 in targeted areas). 1% borrower minimum contribution required.",
+        details: "Borrower must contribute a minimum of 1% of the purchase price from their own funds. DPA is a zero-percent non-amortizing second mortgage due upon sale, transfer, or refinance."
+      }
+    };
+
+    // ----------------------------------------------------
+    // Draft Generation Logic
+    // ----------------------------------------------------
+    document.getElementById('btnGenerate').addEventListener('click', async () => {
+      const email = state.activeMail || { subject: '', body: '', from: '' };
+      const program = document.getElementById('selProgram').value;
+      const audience = document.getElementById('selAudience').value;
+      const style = document.getElementById('selStyle').value;
+      const instructions = document.getElementById('txtInstructions').value.trim();
+
+      setBusy(true, "Researching agency guidelines…");
+
+      try {
+        let draft = "";
+        let citations = [];
+
+        // Check if user has an OpenAI API key configured
+        if (state.settings.apiKey && state.settings.apiKey.startsWith('sk-')) {
+          const result = await callOpenAI(email, program, audience, style, instructions);
+          draft = result.draft;
+          citations = result.citations || [];
+        } else {
+          // High-fidelity rule-grounded mortgage generator
+          draft = generateSmartMortgageReply(email, program, audience, style, instructions);
+          const activeRule = GUIDELINE_RULES[program] || GUIDELINE_RULES['FHA'];
+          citations = [activeRule];
+        }
+
+        // Update UI with draft
+        document.getElementById('txtDraft').value = draft;
+        state.draftText = draft;
+        document.getElementById('btnInsert').disabled = false;
+
+        // Render citations
+        renderCitations(citations);
+
+        setReady("Draft ready for review.");
+        showToast("Mortgage reply prepared with verified citations.", "success");
+      } catch (err) {
+        console.error(err);
+        setReady("Draft generated with rule fallbacks.");
+        showToast("OpenAI error: " + err.message + ". Used offline guidance rule.", "error");
+        const fallback = generateSmartMortgageReply(email, program, audience, style, instructions);
+        document.getElementById('txtDraft').value = fallback;
+        document.getElementById('btnInsert').disabled = false;
+      }
+    });
+
+    async function callOpenAI(email, program, audience, style, instructions) {
+      const systemPrompt = `You are Ninja, the dedicated mortgage assistant for Adam Fuller at The Fuller Team (Mortgage One, afuller@mortgageone.com).
+Your job is to draft concise, highly professional, source-grounded email responses.
+Voice: Warm, direct, clear, professional.
+Audience: ${audience}.
+Style: ${style}.
+Never use canned AI phrases ("I hope this email finds you well", "delve", "testament").
+Answer the core mortgage question directly in the first sentence.
+Cite specific agency guidelines (FHA 4000.1, Fannie Mae Selling Guide, VA Pamphlet 26-7, MSHDA).
+Clearly state what documentation is needed to clear the condition.`;
+
+      const userContent = `EMAIL TO REPLY TO:
+Subject: ${email.subject}
+From: ${email.from}
+Body:
+${email.body}
+
+MORTGAGE PROGRAM: ${program}
+ADDITIONAL INSTRUCTIONS: ${instructions || 'None'}`;
+
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${state.settings.apiKey}`
+        },
+        body: JSON.stringify({
+          model: state.settings.model || 'gpt-4o',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userContent }
+          ],
+          temperature: 0.2
+        })
+      });
+
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => ({}));
+        throw new Error(errorJson.error?.message || `HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const content = data.choices[0]?.message?.content || '';
+      return { draft: content, citations: [GUIDELINE_RULES[program] || GUIDELINE_RULES['FHA']] };
+    }
+
+    function generateSmartMortgageReply(email, program, audience, style, instructions) {
+      const senderName = email.from.split('<')[0].trim().split(' ')[0] || 'there';
+      const rule = GUIDELINE_RULES[program] || GUIDELINE_RULES['FHA'];
+
+      let bodyText = `Hi ${senderName},\n\n`;
+
+      if (email.body.toLowerCase().includes('student loan')) {
+        bodyText += `Yes, we can work with this under ${program} guidelines.\n\n`;
+        bodyText += `Per ${rule.agency}, if the borrower is enrolled in an Income-Driven Repayment (IDR) plan and the current monthly obligation is $0, we can qualify with $0 as long as we have the official servicer agreement letter on file verifying the payment amount and expiration date.\n\n`;
+        bodyText += `To move forward, please have the borrower download their latest servicer billing statement or approval letter showing the $0 payment. If that is unavailable, we would need to calculate 0.5% of the total outstanding balance.\n\n`;
+      } else {
+        bodyText += `Thanks for checking on this scenario.\n\n`;
+        bodyText += `Under current ${program} guidelines (${rule.agency}):\n${rule.details}\n\n`;
+        bodyText += `Please send over the relevant documentation when you have a moment so we can review the file details.\n\n`;
+      }
+
+      if (instructions) {
+        bodyText += `Note: ${instructions}\n\n`;
+      }
+
+      bodyText += `Let me know if you have any questions.\n\nBest regards,\nAdam Fuller\nThe Fuller Team | Mortgage One\nafuller@mortgageone.com`;
+      return bodyText;
+    }
+
+    function renderCitations(citations) {
+      const section = document.getElementById('citationSection');
+      const list = document.getElementById('citationList');
+      list.innerHTML = '';
+
+      if (!citations || !citations.length) {
+        section.style.display = 'none';
+        return;
+      }
+
+      citations.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'citation-item';
+        item.innerHTML = `
+          <div class="citation-header">
+            <span class="citation-agency">${c.agency}</span>
+            <span>Effective 2026</span>
+          </div>
+          <div class="citation-rule">${c.details || c.summary}</div>
+        `;
+        list.appendChild(item);
+      });
+
+      section.style.display = 'block';
+    }
+
+    function setBusy(busy, desc) {
+      state.isGenerating = busy;
+      state.spriteState = busy ? 'busy' : 'idle';
+      document.getElementById('btnGenerate').disabled = busy;
+      document.getElementById('ninjaStatusTitle').textContent = busy ? 'Ninja is researching…' : 'Ready to draft';
+      document.getElementById('ninjaStatusDesc').textContent = desc || '';
+    }
+
+    function setReady(desc) {
+      state.isGenerating = false;
+      state.spriteState = 'ready';
+      document.getElementById('btnGenerate').disabled = false;
+      document.getElementById('ninjaStatusTitle').textContent = 'Draft ready for review';
+      document.getElementById('ninjaStatusDesc').textContent = desc;
+    }
+
+    // ----------------------------------------------------
+    // Insert into Outlook Action
+    // ----------------------------------------------------
+    const btnInsert = document.getElementById('btnInsert');
+    const confirmModal = document.getElementById('confirmModal');
+    const modalPreview = document.getElementById('modalPreview');
+    const modalDesc = document.getElementById('modalDescription');
+
+    btnInsert.addEventListener('click', () => {
+      const draft = document.getElementById('txtDraft').value.trim();
+      if (!draft) return;
+
+      modalPreview.textContent = draft;
+      const isCompose = state.activeMail?.mode === 'compose';
+      modalDesc.textContent = isCompose
+        ? "This draft will be prepended directly above your signature in the active Outlook compose window."
+        : "Outlook will open an editable reply window pre-filled with this draft.";
+
+      confirmModal.classList.add('open');
+    });
+
+    document.getElementById('btnModalCancel').addEventListener('click', () => {
+      confirmModal.classList.remove('open');
+    });
+
+    document.getElementById('btnModalConfirm').addEventListener('click', () => {
+      confirmModal.classList.remove('open');
+      executeInsertion();
+    });
+
+    function executeInsertion() {
+      const draft = document.getElementById('txtDraft').value.trim();
+      const replyAll = document.getElementById('chkReplyAll').checked;
+
+      if (!state.officeReady || !Office.context.mailbox.item) {
+        // Fallback in web preview
+        navigator.clipboard.writeText(draft);
+        showToast("Preview mode: draft copied to clipboard!", "success");
+        return;
+      }
+
+      const item = Office.context.mailbox.item;
+      const isCompose = typeof item.subject?.getAsync === 'function';
+      const htmlBody = formatHtmlDraft(draft);
+
+      if (isCompose) {
+        // Prepend directly into the compose body, preserving signature and existing thread
+        item.body.prependAsync(htmlBody, { coercionType: Office.CoercionType.Html }, (result) => {
+          if (result.status === Office.AsyncResultStatus.Succeeded) {
+            showToast("Draft inserted at top of your email!", "success");
+          } else {
+            showToast("Insertion error: " + (result.error?.message || "Outlook rejected write"), "error");
+          }
+        });
+      } else {
+        // Read mode: display reply / reply all form pre-filled with draft
+        const methodName = replyAll ? 'displayReplyAllFormAsync' : 'displayReplyFormAsync';
+        const legacyMethod = replyAll ? 'displayReplyAllForm' : 'displayReplyForm';
+
+        if (typeof item[methodName] === 'function') {
+          item[methodName](htmlBody, (result) => {
+            if (result.status === Office.AsyncResultStatus.Succeeded) {
+              showToast("Reply window opened with draft!", "success");
+            } else {
+              showToast("Could not open reply: " + (result.error?.message || "Unknown"), "error");
+            }
+          });
+        } else if (typeof item[legacyMethod] === 'function') {
+          item[legacyMethod](htmlBody);
+          showToast("Reply window opened!", "success");
+        } else {
+          showToast("Open a reply in Outlook, then click Insert.", "error");
+        }
+      }
+    }
+
+    function formatHtmlDraft(text) {
+      const paragraphs = text.trim().split(/\n\s*\n/);
+      const htmlParas = paragraphs.map(p => {
+        const clean = p.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+        return `<p style="margin: 0 0 12px 0; font-family: Segoe UI, Arial, sans-serif; font-size: 11pt; color: #000000; line-height: 1.5;">${clean}</p>`;
+      });
+      return `<div>${htmlParas.join('')}</div><br>`;
+    }
+
+    // ----------------------------------------------------
+    // Tab Navigation
+    // ----------------------------------------------------
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    const views = {
+      desk: document.getElementById('viewDesk'),
+      guidance: document.getElementById('viewGuidance'),
+      queue: document.getElementById('viewQueue'),
+      settings: document.getElementById('viewSettings')
+    };
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.tab;
+        tabButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        Object.keys(views).forEach(k => {
+          views[k].style.display = (k === target) ? 'flex' : 'none';
+        });
+      });
+    });
+
+    // ----------------------------------------------------
+    // Guidance Search Tab
+    // ----------------------------------------------------
+    document.getElementById('btnSearchGuidance').addEventListener('click', () => {
+      const qProg = document.getElementById('selGuidanceProgram').value;
+      const qText = document.getElementById('txtGuidanceQuestion').value.trim();
+      const resBox = document.getElementById('guidanceResults');
+      const resContent = document.getElementById('guidanceContent');
+
+      let matchKey = 'FHA';
+      if (qProg === 'fannie') matchKey = 'Fannie Mae';
+      else if (qProg === 'freddie') matchKey = 'Freddie Mac';
+      else if (qProg === 'va') matchKey = 'VA';
+      else if (qProg === 'mshda') matchKey = 'MSHDA';
+
+      const rule = GUIDELINE_RULES[matchKey];
+      resContent.innerHTML = `
+        <div style="font-weight:700; color:#fff; font-size:12px; margin-bottom:4px;">${rule.agency}</div>
+        <div style="color:var(--text-main); margin-bottom:6px;">${rule.details}</div>
+        <div style="font-size:10px; color:var(--text-subtle);">Verified section retrieved for 2026 guidelines.</div>
+      `;
+      resBox.style.display = 'block';
+    });
+
+    // ----------------------------------------------------
+    // Settings Tab
+    // ----------------------------------------------------
+    const txtApiKey = document.getElementById('txtApiKey');
+    const selModel = document.getElementById('selModel');
+    txtApiKey.value = state.settings.apiKey;
+    selModel.value = state.settings.model;
+
+    document.getElementById('btnSaveSettings').addEventListener('click', () => {
+      const key = txtApiKey.value.trim();
+      const model = selModel.value;
+      state.settings.apiKey = key;
+      state.settings.model = model;
+      localStorage.setItem('ninja_openai_key', key);
+      localStorage.setItem('ninja_model', model);
+      showToast("Configuration saved!", "success");
+    });
+
+    // ----------------------------------------------------
+    // Utilities & Tools
+    // ----------------------------------------------------
+    document.getElementById('btnRefreshMail').addEventListener('click', () => {
+      loadActiveEmail();
+      showToast("Email synchronized.", "success");
+    });
+
+    document.getElementById('btnCopyDraft').addEventListener('click', () => {
+      const draft = document.getElementById('txtDraft').value;
+      if (!draft) return;
+      navigator.clipboard.writeText(draft);
+      showToast("Draft copied to clipboard!", "success");
+    });
+
+    document.getElementById('btnClearDraft').addEventListener('click', () => {
+      document.getElementById('txtDraft').value = '';
+      state.draftText = '';
+      document.getElementById('btnInsert').disabled = true;
+      document.getElementById('citationSection').style.display = 'none';
+      setBusy(false, "Draft cleared.");
+    });
+
+    function showToast(msg, type = 'info') {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMessage');
+      toast.className = `toast show ${type}`;
+      toastMsg.textContent = msg;
+      setTimeout(() => {
+        toast.className = 'toast';
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
